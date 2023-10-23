@@ -1,15 +1,13 @@
-resolver 1.1.1.1;
-
 log_format rt_cache '$remote_addr - $upstream_cache_status [$time_local]  '
                     '"$request" $status $body_bytes_sent '
                     '"$http_referer" "$http_user_agent"';
 
 access_log   /usr/local/openresty/nginx/logs/access.log rt_cache;
 
-proxy_cache_path ~ levels=1:2 keys_zone=json_rpc_cache:50m max_size=6g inactive=60m use_temp_path=off;
+proxy_cache_path ~ levels=1:2 keys_zone=json_rpc_cache:50m max_size=1g inactive=60m use_temp_path=off;
 
 server {
-  listen 80;
+  listen 8080;
   default_type application/json;
   set $request_body_md5 "";
   rewrite_by_lua '

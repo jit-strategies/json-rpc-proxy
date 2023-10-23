@@ -15,7 +15,7 @@ docker build -t json-rpc-proxy .
 ## Run
 To run the docker image, you can run the following command:
 ```sh
-docker run --env "ADDRESS=rinkeby.infura.io" --env "CACHE_TIME=5s" -p 8080:80 json-rpc-proxy
+docker run --env "ADDRESS=rinkeby.infura.io" --env "CACHE_TIME=5s" -p 8080:8080 json-rpc-proxy
 ```
 Where:
 * __ADDRESS__: is the address of the JSON RPC destination.
