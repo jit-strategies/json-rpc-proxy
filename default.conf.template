@@ -1,20 +1,26 @@
 resolver kube-dns.kube-system.svc.cluster.local;
+# resolver 1.1.1.1;
 
 log_format rt_cache '$remote_addr - $upstream_cache_status [$time_local]  '
                     '"$request" $status $body_bytes_sent '
-                    '"$http_referer" "$http_user_agent"';
+                    '"$http_referer" "$http_user_agent" "$get_block_by_number_nonce"';
 
 access_log   /usr/local/openresty/nginx/logs/access.log rt_cache;
-
+error_log /usr/local/openresty/nginx/logs/error.log debug;
 proxy_cache_path ~ levels=1:2 keys_zone=json_rpc_cache:50m max_size=1g inactive=60m use_temp_path=off;
 
 server {
   listen 8080;
   default_type application/json;
   set $request_body_md5 "";
+  set $get_block_by_number_nonce "";
   rewrite_by_lua '
     ngx.req.read_body()
     local body = ngx.req.get_body_data()
+    if (body ~= nil) and (string.find(body,"eth_getBlockByNumber")) then
+      local timestamp = ngx.req.start_time()
+      ngx.var.get_block_by_number_nonce = timestamp
+    end
     ngx.var.request_body_md5 = ngx.md5(body)
   ';
 
@@ -25,7 +31,7 @@ server {
   location / {
     proxy_cache json_rpc_cache;
     proxy_cache_methods POST;
-    proxy_cache_key "$uri|$query_string|$request_body_md5";
+    proxy_cache_key "$uri|$query_string|$request_body_md5|$get_block_by_number_nonce";
     proxy_cache_min_uses 1;
     proxy_cache_lock on;
     proxy_cache_use_stale error timeout http_500 http_502 http_503 http_504;
@@ -35,9 +41,13 @@ server {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_ignore_headers Cache-Control;
     proxy_set_header Host ${ADDRESS};
-
     proxy_ssl_server_name on;
     set $upstream_address ${ADDRESS};
-    proxy_pass https://$upstream_address:443;
+    proxy_pass https://$upstream_address;
+    # WebSocket Compatibility (no cache)
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
   }
+
 }
